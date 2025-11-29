@@ -27,6 +27,4 @@ resource "aws_db_instance" "strapi" {
   tags = { Name = "${var.project_name}-rds" }
 }
 
-output "rds_endpoint" {
-  value = aws_db_instance.strapi.address
-}
+
