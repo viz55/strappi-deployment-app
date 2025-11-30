@@ -188,6 +188,13 @@ data "template_file" "userdata" {
     db_password = var.db_password
     db_name     = var.db_name
     docker_image = var.docker_image
+
+    app_keys             = var.app_keys
+    api_token_salt       = var.api_token_salt
+    admin_jwt_secret     = var.admin_jwt_secret
+    jwt_secret           = var.jwt_secret
+    transfer_token_salt  = var.transfer_token_salt
+
   }
 }
 
