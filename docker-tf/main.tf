@@ -123,6 +123,13 @@ resource "aws_security_group" "ec2_sg" {
   description = "Allow inbound HTTP"
   vpc_id      = aws_vpc.main.id
 
+ingress {
+  from_port   = 22
+  to_port     = 22
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+}
+
   ingress {
     from_port   = 1337
     to_port     = 1337
