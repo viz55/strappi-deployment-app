@@ -1,0 +1,7 @@
+
+region = "us-east-1"
+ami = "ami-1234567890abcdef0"
+docker_image = "viz55/strapi-app:latest"
+db_name = "strapidb"
+db_user = "strapiuser"
+db_password = "strapi-pass"

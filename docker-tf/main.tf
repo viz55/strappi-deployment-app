@@ -1,0 +1,144 @@
+
+provider "aws" {
+  region = var.region
+}
+
+############################
+# VPC
+############################
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16"
+}
+
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+}
+
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  map_public_ip_on_launch = true
+}
+
+resource "aws_subnet" "private" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = "10.0.2.0/24"
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+}
+
+resource "aws_route" "public_internet" {
+  route_table_id         = aws_route_table.public.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.igw.id
+}
+
+resource "aws_route_table_association" "public_assoc" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
+}
+
+############################
+# RDS Security Group
+############################
+resource "aws_security_group" "rds_sg" {
+  name        = "rds_sg"
+  description = "Allow EC2 to access Postgres"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    security_groups = [aws_security_group.ec2_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+############################
+# EC2 Security Group
+############################
+resource "aws_security_group" "ec2_sg" {
+  name        = "ec2_sg"
+  description = "Allow inbound HTTP"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 1337
+    to_port     = 1337
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+############################
+# RDS PostgreSQL
+############################
+resource "aws_db_subnet_group" "db_subnets" {
+  name       = "strapi-db-subnet-group"
+  subnet_ids = [aws_subnet.private.id]
+}
+
+resource "aws_db_instance" "postgres" {
+  identifier              = "strapi-db"
+  engine                  = "postgres"
+  engine_version          = "15.3"
+  instance_class          = "db.t3.micro"
+  allocated_storage       = 20
+  db_name                 = var.db_name
+  username                = var.db_user
+  password                = var.db_password
+  publicly_accessible     = false
+  skip_final_snapshot     = true
+  vpc_security_group_ids  = [aws_security_group.rds_sg.id]
+  db_subnet_group_name    = aws_db_subnet_group.db_subnets.name
+}
+
+############################
+# EC2 with Docker
+############################
+data "template_file" "userdata" {
+  template = file("${path.module}/user_data.tpl")
+
+  vars = {
+    db_host     = aws_db_instance.postgres.address
+    db_user     = var.db_user
+    db_password = var.db_password
+    db_name     = var.db_name
+    docker_image = var.docker_image
+  }
+}
+
+resource "aws_instance" "strapi_ec2" {
+  ami           = var.ami
+  instance_type = "c7i-flex.large"
+ # Root volume configuration
+  root_block_device {
+    volume_size = 20        # Size in GB
+    volume_type = "gp3"     # gp2, gp3, io1, etc.
+    delete_on_termination = true
+  }
+  subnet_id     = aws_subnet.public.id
+  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
+
+  user_data = data.template_file.userdata.rendered
+
+  tags = {
+    Name = "strapi-ec2"
+  }
+}
