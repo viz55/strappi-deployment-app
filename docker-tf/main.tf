@@ -1,4 +1,3 @@
-
 provider "aws" {
   region = var.aws_region
 }
@@ -16,7 +15,7 @@ resource "aws_internet_gateway" "igw" {
 
 # Elastic IP for NAT
 resource "aws_eip" "nat_eip" {
-  domain = "vpc"
+ domain =  "vpc"
 }
 
 resource "aws_nat_gateway" "ngw" {
@@ -52,6 +51,7 @@ resource "aws_subnet" "private_b" {
   cidr_block        = "10.0.4.0/24"
   availability_zone = "${var.aws_region}b"
 }
+
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
@@ -180,6 +180,7 @@ resource "aws_db_instance" "postgres" {
 # EC2 with Docker
 ############################
 data "template_file" "userdata" {
+
   template = file("${path.module}/user_data.tpl")
 
   vars = {
@@ -189,11 +190,11 @@ data "template_file" "userdata" {
     db_name     = var.db_name
     docker_image = var.docker_image
 
-    app_keys             = var.app_keys
+     app_keys             = var.app_keys
     api_token_salt       = var.api_token_salt
     admin_jwt_secret     = var.admin_jwt_secret
     jwt_secret           = var.jwt_secret
-    transfer_token_salt  = var.transfer_token_salt
+    admin_auth_secret    = var.admin_auth_secret
 
   }
 }
@@ -210,7 +211,8 @@ resource "aws_instance" "strapi_ec2" {
   subnet_id     = aws_subnet.public_a.id
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
 
-  user_data = data.template_file.userdata.rendered
+user_data = data.template_file.userdata.rendered
+
 
   tags = {
     Name = "strapi-ec2"
