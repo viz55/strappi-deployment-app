@@ -1,1 +1,45 @@
+version: "3.8"
 
+services:
+  strapi:
+    build: .
+    container_name: strapi-app
+    ports:
+      - "1337:1337"
+    environment:
+      NODE_ENV: production
+
+      # DATABASE CONFIG
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: strapidb
+      DATABASE_USERNAME: strapiuser
+      DATABASE_PASSWORD: strapi-pass
+      DATABASE_SSL: "false"
+
+      # REQUIRED STRAPI SECRETS
+      APP_KEYS: "some-generated-keys"
+      API_TOKEN_SALT: "random-salt"
+      ADMIN_JWT_SECRET: "your-admin-secret"
+      JWT_SECRET: "your-jwt-secret"
+
+    depends_on:
+      - postgres
+
+    volumes:
+      - ./app-data:/app/public/uploads
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: strapi-db
+    environment:
+      POSTGRES_DB: strapidb
+      POSTGRES_USER: strapiuser
+      POSTGRES_PASSWORD: strapi-pass
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:
+  app-data:
