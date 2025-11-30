@@ -1,39 +1,46 @@
 #!/bin/bash
-
+set -e
 exec > /var/log/userdata.log 2>&1
-echo "===== Starting User Data Execution ====="
+date; echo "user-data start"
 
-# Update system
-apt update -y
-apt install -y docker.io
+# install essentials
+apt-get update -y
+apt-get install -y docker.io netcat-openbsd
 
-# Enable Docker
-systemctl start docker
-systemctl enable docker
+systemctl enable --now docker
 
-echo "Waiting for Docker to be ready..."
-sleep 10
-
-# Pull Strapi image
-echo "Pulling Docker image: ${docker_image}"
-docker pull ${docker_image}
-
-echo "Waiting for RDS to be ready..."
-# Wait until DB accepts connections
-for i in {1..20}; do
-  if nc -z ${db_host} 5432; then
-    echo "RDS is UP!"
+# wait until docker socket active
+for i in {1..10}; do
+  if sudo systemctl is-active --quiet docker; then
+    echo "docker active"
     break
   fi
-  echo "RDS not up yet... retrying"
+  echo "waiting for docker..."
+  sleep 3
+done
+
+# pull image
+echo "pull ${docker_image}"
+docker pull ${docker_image}
+
+# wait for RDS to accept connections (20 attempts)
+for i in {1..20}; do
+  if nc -z ${db_host} 5432; then
+    echo "rds reachable"
+    break
+  fi
+  echo "waiting for rds..."
   sleep 10
 done
 
-# Run Strapi
-echo "Running Strapi container..."
+# remove previous container if present
+docker rm -f strapi || true
+
+# run container with restart policy
 docker run -d \
   --name strapi \
   --restart unless-stopped \
+  -p 1337:1337 \
   -e DATABASE_CLIENT=postgres \
   -e DATABASE_HOST=${db_host} \
   -e DATABASE_PORT=5432 \
@@ -41,7 +48,6 @@ docker run -d \
   -e DATABASE_PASSWORD=${db_password} \
   -e DATABASE_NAME=${db_name} \
   -e HOST=0.0.0.0 \
-  -p 1337:1337 \
   ${docker_image}
 
-echo "===== User Data Finished ====="
+echo "user-data end: $(date)"
