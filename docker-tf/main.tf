@@ -41,11 +41,6 @@ resource "aws_subnet" "private_b" {
   availability_zone = "${var.aws_region}b"
 }
 
-
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-}
-
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
