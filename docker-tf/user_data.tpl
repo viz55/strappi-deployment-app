@@ -1,46 +1,62 @@
 #!/bin/bash
 set -e
-exec > /var/log/userdata.log 2>&1
-date; echo "user-data start"
+exec > /var/log/user-data.log 2>&1
 
-# install essentials
-apt-get update -y
-apt-get install -y docker.io netcat-openbsd
+echo "=== User-data started ==="
 
-systemctl enable --now docker
+# Debug: print passed variables
+echo "Docker image: ${docker_image}"
+echo "DB host: ${db_host}"
+echo "DB user: ${db_user}"
+echo "DB name: ${db_name}"
 
-# wait until docker socket active
-for i in {1..10}; do
-  if sudo systemctl is-active --quiet docker; then
-    echo "docker active"
-    break
-  fi
-  echo "waiting for docker..."
-  sleep 3
+# Update packages and install dependencies
+sudo apt-get update -y
+sudo apt-get install -y ca-certificates curl gnupg lsb-release netcat
+
+# Install Docker
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+> /etc/apt/sources.list.d/docker.list
+
+sudo apt-get update -y
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+sudo usermod -aG docker ubuntu
+sudo systemctl restart docker
+
+# Enable and start Docker
+sudo systemctl enable --now docker
+
+# Wait for Docker to be ready
+echo "Waiting for Docker daemon..."
+until docker info >/dev/null 2>&1; do
+    sleep 3
 done
 
-# pull image
-echo "pull ${docker_image}"
-docker pull ${docker_image}
-
-# wait for RDS to accept connections (20 attempts)
-for i in {1..20}; do
-  if nc -z ${db_host} 5432; then
-    echo "rds reachable"
-    break
-  fi
-  echo "waiting for rds..."
-  sleep 10
+# Wait for Postgres to be reachable
+echo "Waiting for DB at ${db_host}:5432..."
+until nc -z ${db_host} 5432; do
+    echo "DB not reachable yet, sleeping..."
+    sleep 5
 done
+echo "DB reachable!"
 
-# remove previous container if present
+# Remove old Strapi container if exists
 docker rm -f strapi || true
 
-# run container with restart policy
+# Pull and run Strapi container
+echo "Pulling Docker image ${docker_image}..."
+docker pull ${docker_image}
+
+echo "Running Strapi container..."
 docker run -d \
   --name strapi \
-  --restart unless-stopped \
   -p 1337:1337 \
+  --restart unless-stopped \
   -e DATABASE_CLIENT=postgres \
   -e DATABASE_HOST=${db_host} \
   -e DATABASE_PORT=5432 \
@@ -50,4 +66,9 @@ docker run -d \
   -e HOST=0.0.0.0 \
   ${docker_image}
 
-echo "user-data end: $(date)"
+# Debug: confirm container is running
+echo "Docker containers:"
+docker ps -a
+
+echo "=== User-data completed ==="
+
