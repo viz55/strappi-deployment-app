@@ -1,14 +1,15 @@
 # ─────────────────────────────────────────────
 # 1. BUILD STAGE
 # ─────────────────────────────────────────────
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
 # Install required build tools
 RUN apk add --no-cache build-base python3
 
-COPY package.json yarn.lock ./
+COPY package.json ./
+
 RUN yarn install
 
 COPY . .
@@ -18,7 +19,7 @@ RUN yarn build
 # ─────────────────────────────────────────────
 # 2. RUNTIME STAGE
 # ─────────────────────────────────────────────
-FROM node:18-alpine
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 
