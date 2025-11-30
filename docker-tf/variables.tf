@@ -5,3 +5,8 @@ variable "docker_image" { description = "Docker image to run" }
 variable "db_name" {}
 variable "db_user" {}
 variable "db_password" {}
+variable "app_keys" {}
+variable "api_token_salt" {}
+variable "admin_jwt_secret" {}
+variable "jwt_secret" {}
+variable "admin_auth_secret" {}
