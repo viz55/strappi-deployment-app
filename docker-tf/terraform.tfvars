@@ -1,5 +1,4 @@
-
-region = "ap-south-1"
+aws_region = "ap-south-1"
 ami = "ami-0078a63645c7b8a87"
 docker_image = "viz55/strapi-app:latest"
 db_name = "strapidb"
