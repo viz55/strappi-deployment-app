@@ -1,6 +1,6 @@
 
 provider "aws" {
-  region = var.region
+  region = var.aws_region
 }
 
 ############################
@@ -12,6 +12,18 @@ resource "aws_vpc" "main" {
 
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
+}
+
+# Elastic IP for NAT
+resource "aws_eip" "nat_eip" {
+  domain = "vpc"
+}
+
+resource "aws_nat_gateway" "ngw" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id     = aws_subnet.public_a.id
+
+  depends_on = [aws_internet_gateway.igw]
 }
 
 resource "aws_subnet" "public_a" {
