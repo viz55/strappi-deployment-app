@@ -1,20 +1,37 @@
-import path from 'path';
+export default ({ env }) => {
+  const client = env("DATABASE_CLIENT", "postgres");
 
-export default ({ env }) => ({
-  connection: {
-    client: env('DATABASE_CLIENT', 'postgres'),
+  return {
     connection: {
-      host: env('DATABASE_HOST', '127.0.0.1'),
-      port: env.int('DATABASE_PORT', 5432),
-      database: env('DATABASE_NAME', 'strapidb'),
-      user: env('DATABASE_USERNAME', 'strapiuser'),
-      password: env('DATABASE_PASSWORD', 'strapi-pass'),
-      ssl: env.bool('DATABASE_SSL', false) ? { rejectUnauthorized: false } : false,
+      client,
+      connection:
+        client === "sqlite"
+          ? {
+              filename: env(
+                "DATABASE_FILENAME",
+                "/app/data/strapi.db" // Safe default for Docker volume
+              ),
+            }
+          : {
+              host: env("DATABASE_HOST"),
+              port: env.int("DATABASE_PORT"),
+              database: env("DATABASE_NAME"),
+              user: env("DATABASE_USERNAME"),
+              password: env("DATABASE_PASSWORD"),
+              ssl: env.bool("DATABASE_SSL", false)
+                ? { rejectUnauthorized: false }
+                : false,
+            },
+
+      useNullAsDefault: client === "sqlite",
+
+      pool:
+        client === "postgres"
+          ? {
+              min: env.int("DATABASE_POOL_MIN", 2),
+              max: env.int("DATABASE_POOL_MAX", 10),
+            }
+          : undefined,
     },
-    pool: {
-      min: env.int('DATABASE_POOL_MIN', 2),
-      max: env.int('DATABASE_POOL_MAX', 10),
-    },
-    acquireConnectionTimeout: env.int('DATABASE_CONNECTION_TIMEOUT', 60000),
-  }
-});
+  };
+};
