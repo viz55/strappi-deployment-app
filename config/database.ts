@@ -9,7 +9,7 @@ export default ({ env }) => {
           ? {
               filename: env(
                 "DATABASE_FILENAME",
-                "/app/data/strapi.db" // Safe default for Docker volume
+                "/app/data/strapi.db"
               ),
             }
           : {
@@ -22,16 +22,7 @@ export default ({ env }) => {
                 ? { rejectUnauthorized: false }
                 : false,
             },
-
       useNullAsDefault: client === "sqlite",
-
-      pool:
-        client === "postgres"
-          ? {
-              min: env.int("DATABASE_POOL_MIN", 2),
-              max: env.int("DATABASE_POOL_MAX", 10),
-            }
-          : undefined,
     },
   };
 };
