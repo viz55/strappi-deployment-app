@@ -186,7 +186,7 @@ resource "aws_instance" "strapi_ec2" {
     volume_type = "gp3"     # gp2, gp3, io1, etc.
     delete_on_termination = true
   }
-  subnet_id     = aws_subnet.public.id
+  subnet_id     = aws_subnet.public_a.id
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
 
   user_data = data.template_file.userdata.rendered
